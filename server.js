@@ -38,15 +38,18 @@ const OUTPUTS_DIR = path.join(DATA_DIR, "outputs");
 const HAS_OPENAI_KEY = Boolean(process.env.OPENAI_API_KEY);
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
 const OLLAMA_BASE_URL = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434").replace(/\/+$/, "");
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.1:8b";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "";
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const ANTHROPIC_BASE_URL = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/+$/, "");
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514";
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.5";
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "";
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "";
 const LLM_PROVIDER = normalizeProvider(process.env.LLM_PROVIDER);
-const ACTIVE_PROVIDER = resolveActiveProvider();
 const HAS_ANTHROPIC_KEY = Boolean(ANTHROPIC_API_KEY);
-const HAS_CONFIGURED_PROVIDER = canUseProvider(ACTIVE_PROVIDER);
+const HAS_OPENAI_CONFIG = HAS_OPENAI_KEY && Boolean(OPENAI_MODEL);
+const HAS_ANTHROPIC_CONFIG = HAS_ANTHROPIC_KEY && Boolean(ANTHROPIC_MODEL);
+const HAS_OLLAMA_CONFIG = LLM_PROVIDER === "ollama" && Boolean(process.env.OLLAMA_BASE_URL && OLLAMA_MODEL);
+const ACTIVE_PROVIDER = resolveActiveProvider();
+const HAS_CONFIGURED_PROVIDER = HAS_OPENAI_CONFIG || HAS_ANTHROPIC_CONFIG || HAS_OLLAMA_CONFIG;
 const SESSION_SECRET = process.env.SESSION_SECRET || "local-dev-session-secret";
 const DATABASE_URL = process.env.DATABASE_URL || "";
 const USE_POSTGRES = Boolean(DATABASE_URL);
@@ -58,9 +61,9 @@ const SUPPORTED_EXTENSIONS = new Set([
 const CONFIDENCE_LEVELS = ["confirmed", "probable", "possible", "insufficient_evidence"];
 const WORKSPACE_TYPES = ["general"];
 const WORKSPACE_LANGUAGES = ["en", "ar"];
-const OPENAI_MODELS = ["gpt-5.5", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.1", "gpt-4.1"];
-const ANTHROPIC_MODELS = ["claude-opus-4-1-20250805", "claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219"];
-const OLLAMA_MODELS = ["qwen3:8b", "qwen3:14b", "qwen3:30b", "qwen3:32b", "qwen2.5:7b", "qwen2.5:14b", "qwen2.5:32b", "llama3.1:8b", "llama3.1:70b"];
+const OPENAI_MODELS = HAS_OPENAI_CONFIG ? [OPENAI_MODEL] : [];
+const ANTHROPIC_MODELS = HAS_ANTHROPIC_CONFIG ? [ANTHROPIC_MODEL] : [];
+const OLLAMA_MODELS = HAS_OLLAMA_CONFIG ? [OLLAMA_MODEL].filter(Boolean) : [];
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -250,23 +253,31 @@ app.use(express.static(PUBLIC_DIR));
 app.use("/generated", express.static(GENERATED_DIR));
 app.use("/outputs", express.static(OUTPUTS_DIR));
 
+function configuredProviderOptions() {
+  return [
+    { value: "openai", label: "OpenAI", enabled: HAS_OPENAI_CONFIG, models: OPENAI_MODELS },
+    { value: "anthropic", label: "Claude / Anthropic", enabled: HAS_ANTHROPIC_CONFIG, models: ANTHROPIC_MODELS },
+    { value: "ollama", label: "Ollama", enabled: HAS_OLLAMA_CONFIG, models: OLLAMA_MODELS }
+  ].filter((provider) => provider.enabled && provider.models.length);
+}
+
 app.get("/api/health", async (_req, res) => {
   const admin = await dbGet("SELECT email FROM users WHERE role = 'admin' LIMIT 1");
+  const providerOptions = configuredProviderOptions();
+  const activeProvider = providerOptions.some((provider) => provider.value === ACTIVE_PROVIDER)
+    ? ACTIVE_PROVIDER
+    : providerOptions[0]?.value || "openai";
   res.json({
     ok: true,
-    configured: HAS_CONFIGURED_PROVIDER,
-    provider: ACTIVE_PROVIDER,
-    model: defaultModelForProvider(ACTIVE_PROVIDER),
-    ollamaBaseUrl: ACTIVE_PROVIDER === "ollama" ? OLLAMA_BASE_URL : null,
+    configured: providerOptions.length > 0,
+    provider: activeProvider,
+    model: defaultModelForProvider(activeProvider),
+    ollamaBaseUrl: activeProvider === "ollama" ? OLLAMA_BASE_URL : null,
     defaults: {
-      provider: ACTIVE_PROVIDER,
-      model: defaultModelForProvider(ACTIVE_PROVIDER)
+      provider: activeProvider,
+      model: defaultModelForProvider(activeProvider)
     },
-    providerOptions: [
-      { value: "openai", label: "OpenAI", enabled: HAS_OPENAI_KEY, models: OPENAI_MODELS },
-      { value: "anthropic", label: "Anthropic", enabled: HAS_ANTHROPIC_KEY, models: ANTHROPIC_MODELS },
-      { value: "ollama", label: "Ollama", enabled: true, models: OLLAMA_MODELS }
-    ],
+    providerOptions,
     adminEmail: admin ? admin.email : DEFAULT_ADMIN_EMAIL,
     persistence: USE_POSTGRES ? "postgresql" : "sqlite",
     backgroundJobs: true
@@ -375,7 +386,7 @@ app.get("/api/cases/:id/export.md", requireUser, async (req, res) => {
 
 app.post("/api/cases", requireUser, upload.array("documents", 50), async (req, res) => {
   if (!HAS_CONFIGURED_PROVIDER) {
-    return res.status(400).json({ error: "No LLM provider is configured. Add OPENAI_API_KEY or set LLM_PROVIDER=ollama in .env." });
+    return res.status(400).json({ error: "No LLM provider is configured. Add OPENAI_API_KEY + OPENAI_MODEL or ANTHROPIC_API_KEY + ANTHROPIC_MODEL." });
   }
 
   const files = req.files || [];
@@ -432,7 +443,7 @@ app.post("/api/cases", requireUser, upload.array("documents", 50), async (req, r
 
 app.post("/api/cases/:id/analyze", requireUser, async (req, res) => {
   if (!HAS_CONFIGURED_PROVIDER) {
-    return res.status(400).json({ error: "No LLM provider is configured. Add OPENAI_API_KEY or set LLM_PROVIDER=ollama in .env." });
+    return res.status(400).json({ error: "No LLM provider is configured. Add OPENAI_API_KEY + OPENAI_MODEL or ANTHROPIC_API_KEY + ANTHROPIC_MODEL." });
   }
 
   const record = await getCaseForUser(req.params.id, req.currentUser);
@@ -505,7 +516,7 @@ app.get("/api/jobs/:id", requireUser, (req, res) => {
 
 app.post("/api/cases/:id/questions", requireUser, async (req, res) => {
   if (!HAS_CONFIGURED_PROVIDER) {
-    return res.status(400).json({ error: "No LLM provider is configured. Add OPENAI_API_KEY or set LLM_PROVIDER=ollama in .env." });
+    return res.status(400).json({ error: "No LLM provider is configured. Add OPENAI_API_KEY + OPENAI_MODEL or ANTHROPIC_API_KEY + ANTHROPIC_MODEL." });
   }
 
   const record = await getCaseForUser(req.params.id, req.currentUser);
@@ -555,7 +566,7 @@ app.post("/api/cases/:id/questions", requireUser, async (req, res) => {
 
 app.post("/api/cases/:id/tasks", requireUser, async (req, res) => {
   if (!HAS_CONFIGURED_PROVIDER) {
-    return res.status(400).json({ error: "No LLM provider is configured. Add OPENAI_API_KEY or set LLM_PROVIDER=ollama in .env." });
+    return res.status(400).json({ error: "No LLM provider is configured. Add OPENAI_API_KEY + OPENAI_MODEL or ANTHROPIC_API_KEY + ANTHROPIC_MODEL." });
   }
 
   const record = await getCaseForUser(req.params.id, req.currentUser);
@@ -2742,7 +2753,33 @@ function normalizeProvider(value) {
 }
 
 function normalizeLlmProvider(value) {
-  return value === "ollama" ? "ollama" : value === "anthropic" ? "anthropic" : "openai";
+  const requested = value === "ollama" ? "ollama" : value === "anthropic" ? "anthropic" : value === "openai" ? "openai" : ACTIVE_PROVIDER;
+  if (isProviderConfigured(requested)) {
+    return requested;
+  }
+  if (HAS_OPENAI_CONFIG) {
+    return "openai";
+  }
+  if (HAS_ANTHROPIC_CONFIG) {
+    return "anthropic";
+  }
+  if (HAS_OLLAMA_CONFIG) {
+    return "ollama";
+  }
+  return requested;
+}
+
+function isProviderConfigured(provider) {
+  if (provider === "openai") {
+    return HAS_OPENAI_CONFIG;
+  }
+  if (provider === "anthropic") {
+    return HAS_ANTHROPIC_CONFIG;
+  }
+  if (provider === "ollama") {
+    return HAS_OLLAMA_CONFIG;
+  }
+  return false;
 }
 
 function defaultModelForProvider(provider) {
@@ -2772,24 +2809,18 @@ function normalizeLlmModel(provider, value) {
 
 function canUseProvider(provider) {
   const resolvedProvider = normalizeLlmProvider(provider);
-  if (resolvedProvider === "openai") {
-    return HAS_OPENAI_KEY;
-  }
-  if (resolvedProvider === "anthropic") {
-    return HAS_ANTHROPIC_KEY;
-  }
-  return Boolean(OLLAMA_BASE_URL);
+  return isProviderConfigured(resolvedProvider);
 }
 
 function providerUnavailableMessage(provider) {
   const resolvedProvider = normalizeLlmProvider(provider);
   if (resolvedProvider === "openai") {
-    return "OpenAI is not configured. Add OPENAI_API_KEY to .env before using the OpenAI provider.";
+    return "OpenAI is not configured. Add both OPENAI_API_KEY and OPENAI_MODEL before using the OpenAI provider.";
   }
   if (resolvedProvider === "anthropic") {
-    return "Anthropic is not configured. Add ANTHROPIC_API_KEY to .env before using the Anthropic provider.";
+    return "Anthropic is not configured. Add both ANTHROPIC_API_KEY and ANTHROPIC_MODEL before using the Claude provider.";
   }
-  return "Ollama is not configured. Start Ollama and set OLLAMA_BASE_URL in .env before using the Ollama provider.";
+  return "Ollama is not configured. Set LLM_PROVIDER=ollama, OLLAMA_BASE_URL, and OLLAMA_MODEL before using the Ollama provider.";
 }
 
 function resolveActiveProvider() {
@@ -2800,15 +2831,15 @@ function resolveActiveProvider() {
     return "anthropic";
   }
   if (LLM_PROVIDER === "ollama") {
-    return "ollama";
+    return HAS_OLLAMA_CONFIG ? "ollama" : "openai";
   }
-  if (HAS_OPENAI_KEY) {
+  if (HAS_OPENAI_CONFIG) {
     return "openai";
   }
-  if (HAS_ANTHROPIC_KEY) {
+  if (HAS_ANTHROPIC_CONFIG) {
     return "anthropic";
   }
-  return "ollama";
+  return "openai";
 }
 
 function normalizeWorkspaceType(value) {

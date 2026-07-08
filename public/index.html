@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&family=Noto+Sans+Arabic:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=form-polish-1" />
+    <link rel="stylesheet" href="/styles.css?v=models-configured-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -119,11 +119,7 @@
                 <div class="two-list-grid compact-form-grid">
                   <label class="field">
                     <span id="provider-label">Provider</span>
-                    <select id="llm-provider" name="llmProvider">
-                      <option value="openai">OpenAI</option>
-                      <option value="anthropic">Anthropic</option>
-                      <option value="ollama">Ollama</option>
-                    </select>
+                    <select id="llm-provider" name="llmProvider"></select>
                   </label>
 
                   <label class="field">
@@ -640,11 +636,7 @@
                             </label>
                             <label class="field">
                               <span data-i18n="agentProvider">Agent provider</span>
-                              <select id="agent-llm-provider">
-                                <option value="openai">OpenAI</option>
-                                <option value="anthropic">Claude / Anthropic</option>
-                                <option value="ollama">Ollama</option>
-                              </select>
+                              <select id="agent-llm-provider"></select>
                             </label>
                           </div>
                           <label class="field">
@@ -750,6 +742,6 @@
       </section>
     </div>
 
-    <script src="/script.js?v=form-polish-1"></script>
+    <script src="/script.js?v=models-configured-1"></script>
   </body>
 </html>

@@ -341,23 +341,20 @@ async function loadHealth() {
     const response = await fetch("/api/health");
     const data = await response.json();
     state.providerOptions = data.providerOptions || [];
-    state.defaultProvider = data.defaults?.provider || "openai";
-    state.defaultModel = data.defaults?.model || "gpt-5.5";
+    state.defaultProvider = data.defaults?.provider || state.providerOptions[0]?.value || "";
+    state.defaultModel = data.defaults?.model || state.providerOptions[0]?.models?.[0] || "";
     state.runtimeProvider = state.defaultProvider;
     state.runtimeModel = state.defaultModel;
     healthPill.textContent = data.configured
-      ? `${String(data.provider || "openai").toUpperCase()} ready - model ${data.model}`
-      : "Add OPENAI_API_KEY or enable Ollama in .env before using the app";
+      ? `${String(data.provider || state.defaultProvider).toUpperCase()} ready - model ${data.model || state.defaultModel}`
+      : "Add OPENAI_API_KEY or ANTHROPIC_API_KEY in Hostinger environment variables before using the app";
     healthPill.classList.add(data.configured ? "ready" : "missing");
     adminHint.textContent = `Default admin: ${data.adminEmail} / ChangeMe123! unless overridden in .env`;
     adminHint.classList.remove("hidden");
-  if (llmProviderSelect) {
-    llmProviderSelect.value = state.defaultProvider;
-    renderModelOptions(state.defaultProvider, state.defaultModel);
-  }
-  initializeAgentModelSelector();
-  state.runtimeProvider = state.defaultProvider;
-  state.runtimeModel = state.defaultModel;
+    renderProviderOptions();
+    initializeAgentModelSelector();
+    state.runtimeProvider = state.defaultProvider;
+    state.runtimeModel = state.defaultModel;
   } catch (_error) {
     healthPill.textContent = "Could not reach the local server";
     healthPill.classList.add("missing");
@@ -1269,14 +1266,10 @@ function renderModelOptions(provider, selectedModel) {
     return;
   }
 
-  const selectedProvider = provider || state.defaultProvider || "openai";
+  const selectedProvider = provider || state.defaultProvider || state.providerOptions[0]?.value || "";
   const providerConfig = (state.providerOptions || []).find((item) => item.value === selectedProvider);
-  const models = providerConfig?.models || (selectedProvider === "ollama"
-    ? ["qwen3:8b", "qwen3:14b", "qwen3:30b", "qwen3:32b", "qwen2.5:7b", "qwen2.5:14b", "qwen2.5:32b", "llama3.1:8b", "llama3.1:70b"]
-    : selectedProvider === "anthropic"
-      ? ["claude-opus-4-1-20250805", "claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219"]
-      : ["gpt-5.5", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.1", "gpt-4.1"]);
-  const nextModel = models.includes(selectedModel) ? selectedModel : models[0];
+  const models = providerConfig?.models || [];
+  const nextModel = models.includes(selectedModel) ? selectedModel : models[0] || "";
 
   llmModelSelect.innerHTML = models
     .map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`)
@@ -1284,12 +1277,33 @@ function renderModelOptions(provider, selectedModel) {
   llmModelSelect.value = nextModel;
 }
 
+function renderProviderOptions() {
+  const providers = (state.providerOptions || []).filter((provider) => provider.enabled !== false && provider.models?.length);
+  const optionsHtml = providers
+    .map((provider) => `<option value="${escapeHtml(provider.value)}">${escapeHtml(provider.label || provider.value)}</option>`)
+    .join("");
+
+  if (llmProviderSelect) {
+    llmProviderSelect.innerHTML = optionsHtml;
+    llmProviderSelect.disabled = providers.length === 0;
+    llmProviderSelect.value = providers.some((provider) => provider.value === state.defaultProvider)
+      ? state.defaultProvider
+      : providers[0]?.value || "";
+    renderModelOptions(llmProviderSelect.value, state.defaultModel);
+  }
+
+  if (agentLlmProviderSelect) {
+    agentLlmProviderSelect.innerHTML = optionsHtml;
+    agentLlmProviderSelect.disabled = providers.length === 0;
+  }
+}
+
 function initializeAgentModelSelector() {
   if (!agentLlmProviderSelect || !agentLlmModelSelect) {
     return;
   }
 
-  const preferredProvider = getProviderConfig("anthropic")?.enabled ? "anthropic" : state.defaultProvider || "openai";
+  const preferredProvider = getProviderConfig("anthropic")?.enabled ? "anthropic" : state.defaultProvider || state.providerOptions[0]?.value || "";
   agentLlmProviderSelect.value = preferredProvider;
   renderAgentModelOptions(preferredProvider);
 }
@@ -1299,10 +1313,10 @@ function renderAgentModelOptions(provider, selectedModel) {
     return;
   }
 
-  const selectedProvider = provider || agentLlmProviderSelect?.value || state.defaultProvider || "openai";
+  const selectedProvider = provider || agentLlmProviderSelect?.value || state.defaultProvider || state.providerOptions[0]?.value || "";
   const providerConfig = getProviderConfig(selectedProvider);
-  const models = providerConfig?.models || fallbackModelsForProvider(selectedProvider);
-  const nextModel = models.includes(selectedModel) ? selectedModel : models[0];
+  const models = providerConfig?.models || [];
+  const nextModel = models.includes(selectedModel) ? selectedModel : models[0] || "";
   agentLlmModelSelect.innerHTML = models
     .map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`)
     .join("");
@@ -1330,14 +1344,6 @@ function syncAgentProviderForOutputFormat() {
 
 function getProviderConfig(provider) {
   return (state.providerOptions || []).find((item) => item.value === provider);
-}
-
-function fallbackModelsForProvider(provider) {
-  return provider === "ollama"
-    ? ["qwen3:8b", "qwen3:14b", "qwen3:30b", "qwen3:32b", "qwen2.5:7b", "qwen2.5:14b", "qwen2.5:32b", "llama3.1:8b", "llama3.1:70b"]
-    : provider === "anthropic"
-      ? ["claude-opus-4-1-20250805", "claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219"]
-      : ["gpt-5.5", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.1", "gpt-4.1"];
 }
 
 function renderSidebarStats() {
