@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UAEICP Employee Intelligence Workspace</title>
+    <meta
+      name="description"
+      content="Internal UAEICP employee workspace for document review, service-request analysis, policy Q&A, task drafting, and saved work history."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&family=Noto+Sans+Arabic:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css?v=cleanup-1" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <section id="auth-screen" class="auth-screen">
+        <div class="auth-card">
+          <div class="language-row auth-language-row">
+            <label class="field inline-field">
+              <span data-i18n="uiLanguageLabel">Interface language</span>
+              <select id="auth-language-select">
+                <option value="en">English</option>
+                <option value="ar">العربية</option>
+              </select>
+            </label>
+          </div>
+          <p class="eyebrow" data-i18n="secureAccess">Secure Access</p>
+          <h1 data-i18n="appTitle">UAEICP Employee Intelligence Workspace</h1>
+          <p class="auth-copy" data-i18n="authCopy">
+            Sign in to review internal documents, service requests, circulars, policy material, and employee tasks with grounded AI support.
+          </p>
+
+          <div id="health-pill" class="health-pill">Checking local setup...</div>
+          <div id="admin-hint" class="admin-hint hidden"></div>
+
+          <form id="login-form" class="auth-form">
+            <label class="field">
+              <span data-i18n="emailLabel">Email</span>
+              <input id="login-email" type="email" autocomplete="username" required />
+            </label>
+            <label class="field">
+              <span data-i18n="passwordLabel">Password</span>
+              <input id="login-password" type="password" autocomplete="current-password" required />
+            </label>
+            <button id="login-button" class="primary-button" type="submit" data-i18n="signIn">Sign In</button>
+            <p id="login-status" class="form-status"></p>
+          </form>
+        </div>
+      </section>
+
+      <section id="app-screen" class="app-screen hidden">
+        <header class="topbar">
+          <div class="brand-block">
+            <img class="brand-logo official-logo" src="/icp-official-logo.webp" alt="Federal Authority for Identity, Citizenship, Customs and Port Security" />
+            <div>
+              <p class="eyebrow" data-i18n="researchWorkspace">UAEICP Workspace</p>
+              <h1 data-i18n="appTitle">UAEICP Employee Intelligence Workspace</h1>
+            </div>
+          </div>
+
+          <div class="topbar-actions">
+            <label class="field inline-field">
+              <span data-i18n="uiLanguageLabel">Interface language</span>
+              <select id="app-language-select">
+                <option value="en">English</option>
+                <option value="ar">العربية</option>
+              </select>
+            </label>
+            <div class="user-badge">
+              <strong id="current-user-name"></strong>
+              <span id="current-user-role"></span>
+            </div>
+            <button id="logout-button" class="secondary-button" type="button" data-i18n="signOut">Sign Out</button>
+          </div>
+        </header>
+
+        <main class="app-layout">
+          <aside class="sidebar">
+            <section class="panel">
+              <div class="panel-head compact">
+                <div>
+                  <p class="eyebrow" data-i18n="newWorkspace">New Workspace</p>
+                  <h2 data-i18n="analyzeNewSet">Start an employee workspace</h2>
+                </div>
+              </div>
+
+              <form id="case-form" class="stack-form">
+                <label class="field">
+                  <span data-i18n="workspaceTitle">Workspace title</span>
+                  <input id="case-title" name="title" type="text" data-i18n-placeholder="workspaceTitlePlaceholder" placeholder="Policy circular / service request / internal memo" />
+                </label>
+
+                <label class="field">
+                  <span id="analysis-focus-label">Analysis focus</span>
+                  <div id="analysis-focus-help" class="info-card">
+                    One secure workspace for UAEICP employees to analyze documents, summarize service requests, compare policy material, draft internal outputs, and ask follow-up questions.
+                  </div>
+                </label>
+                <input id="workspace-type" name="workspaceType" type="hidden" value="general" />
+
+                <label class="field workspace-language-field hidden" aria-hidden="true">
+                  <span data-i18n="workspaceLanguage">Workspace language</span>
+                  <select id="workspace-language" name="workspaceLanguage">
+                    <option value="en">English</option>
+                    <option value="ar">العربية</option>
+                  </select>
+                  <small data-i18n="workspaceLanguageHelp">Analysis and answers will be generated in this language.</small>
+                </label>
+
+                <div class="two-list-grid compact-form-grid">
+                  <label class="field">
+                    <span id="provider-label">Provider</span>
+                    <select id="llm-provider" name="llmProvider">
+                      <option value="openai">OpenAI</option>
+                      <option value="anthropic">Anthropic</option>
+                      <option value="ollama">Ollama</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span id="model-label">Model</span>
+                    <select id="llm-model" name="llmModel"></select>
+                  </label>
+                </div>
+
+                <label class="field">
+                  <span data-i18n="analysisDepth">Analysis depth</span>
+                  <select id="analysis-depth" name="analysisDepth">
+                    <option value="quick" data-i18n="analysisDepthQuick">Quick</option>
+                    <option value="deep" data-i18n="analysisDepthDeep">Deep</option>
+                  </select>
+                  <small data-i18n="analysisDepthHelp">Quick gets you to a grounded first pass faster. Deep spends more time on retrieval and reasoning.</small>
+                </label>
+
+                <div class="mode-switch" role="group" aria-label="Analysis mode">
+                  <button class="mode-button active" data-mode="guarded" type="button" data-i18n="guarded">Guarded</button>
+                  <button class="mode-button" data-mode="unguarded" type="button" data-i18n="unguarded">Unguarded</button>
+                </div>
+
+                <div class="mode-copy">
+                  <div class="mode-card guarded-card">
+                    <h3 data-i18n="guarded">Guarded</h3>
+                    <p data-i18n="guardedHelp">Evidence-first analysis for defensible summaries, contradictions, and grounded research answers.</p>
+                  </div>
+                  <div class="mode-card unguarded-card">
+                    <h3 data-i18n="unguarded">Unguarded</h3>
+                    <p data-i18n="unguardedHelp">Pattern-seeking analysis for hypotheses, opportunities, anomalies, and exploratory thinking.</p>
+                  </div>
+                </div>
+
+                <label class="field">
+                  <span data-i18n="documentsLabel">Documents</span>
+                  <div class="upload-zone">
+                    <input id="documents" name="documents" type="file" multiple />
+                    <strong>Upload one or many files</strong>
+                    <small id="documents-help">Select multiple files at once, or add more files in separate picks before analyzing.</small>
+                  </div>
+                </label>
+
+                <label class="field">
+                  <span>Request or task brief</span>
+                  <textarea id="intake-text" name="intakeText" rows="5" placeholder="Optional: describe the employee request, case background, policy question, memo requirement, or task you want help with."></textarea>
+                  <small>You can start with text only, files only, or both together.</small>
+                </label>
+
+                <div id="selected-files" class="selected-files empty" data-empty-text-key="noDocumentsSelected">No documents selected yet.</div>
+
+                <button id="analyze-button" class="primary-button" type="submit" data-i18n="uploadAnalyze">Upload And Analyze</button>
+                <p id="form-status" class="form-status"></p>
+              </form>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head compact">
+                <div>
+                  <p class="eyebrow">History</p>
+                  <h2>Saved workspaces</h2>
+                </div>
+              </div>
+              <div id="history-list" class="history-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head compact">
+                <div>
+                  <p class="eyebrow">Profile</p>
+                  <h2>Update your account</h2>
+                </div>
+              </div>
+
+              <form id="profile-form" class="stack-form">
+                <label class="field">
+                  <span>Name</span>
+                  <input id="profile-name" type="text" required />
+                </label>
+                <label class="field">
+                  <span>New password</span>
+                  <input id="profile-password" type="password" placeholder="Leave blank to keep your current password" />
+                  <small>Use at least 8 characters if you change it.</small>
+                </label>
+                <button id="save-profile-button" class="secondary-button" type="submit">Save Profile</button>
+                <p id="profile-status" class="form-status"></p>
+              </form>
+            </section>
+
+            <section id="admin-panel" class="panel hidden">
+              <div class="panel-head compact">
+                <div>
+                  <p class="eyebrow">Admin</p>
+                  <h2>Create users</h2>
+                </div>
+              </div>
+
+              <form id="user-form" class="stack-form">
+                <label class="field">
+                  <span>Name</span>
+                  <input id="user-name" type="text" required />
+                </label>
+                <label class="field">
+                  <span>Email</span>
+                  <input id="user-email" type="email" required />
+                </label>
+                <label class="field">
+                  <span>Password</span>
+                  <input id="user-password" type="password" required />
+                </label>
+                <label class="field">
+                  <span>Role</span>
+                  <select id="user-role">
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </label>
+                <button id="create-user-button" class="primary-button" type="submit">Create User</button>
+                <p id="user-status" class="form-status"></p>
+              </form>
+
+              <div class="user-list-wrap">
+                <p class="list-title">Users</p>
+                <div id="user-list" class="history-list"></div>
+              </div>
+
+              <div class="user-list-wrap">
+                <p class="list-title">Database GUI</p>
+                <div class="stack-item">
+                  <p>Open the live PostgreSQL database in a browser-based GUI.</p>
+                  <a class="primary-button" href="http://localhost:8081" target="_blank" rel="noreferrer">Open Instant Database Viewer</a>
+                  <p>Recommended: this viewer opens directly into the project database.</p>
+                </div>
+              </div>
+
+              <div class="user-list-wrap">
+                <p class="list-title">Advanced Database GUI</p>
+                <div class="stack-item">
+                  <p>Use Adminer if you want the classic login-based database GUI.</p>
+                  <p><strong>System:</strong> PostgreSQL</p>
+                  <p><strong>Server:</strong> <code>postgres</code> in Docker or <code>localhost</code> from your machine</p>
+                  <p><strong>Database:</strong> <code>research_intelligence_studio</code></p>
+                  <p><strong>Username:</strong> <code>postgres</code></p>
+                  <p><strong>Password:</strong> <code>postgres</code></p>
+                  <a class="secondary-button" href="http://localhost:8080" target="_blank" rel="noreferrer">Open Adminer</a>
+                </div>
+              </div>
+            </section>
+          </aside>
+
+          <section class="main-panel">
+            <section class="panel workspace-panel hidden">
+              <div class="workspace-header">
+                <div class="workspace-heading">
+                  <p class="eyebrow">Current workspace</p>
+                  <h2 id="workspace-title">Select or create a workspace</h2>
+                  <p id="workspace-subtitle" class="workspace-subtitle">Employee intelligence · Guarded mode · Quick depth</p>
+                </div>
+              </div>
+
+              <div id="empty-state" class="empty-state hidden" aria-hidden="true"></div>
+
+              <div id="workspace" class="workspace hidden">
+                <nav class="workspace-nav workspace-nav-top" role="tablist" aria-label="Workspace sections">
+                  <button class="workspace-tab active" data-tab="overview" type="button">Overview</button>
+                  <button class="workspace-tab" data-tab="files" type="button">Files</button>
+                  <button class="workspace-tab" data-tab="studio" type="button">Studio</button>
+                  <button class="workspace-tab" data-tab="review" type="button">Review</button>
+                </nav>
+
+                <div class="workspace-actions workspace-action-tabs" role="toolbar" aria-label="Workspace actions">
+                  <button id="quick-reanalyze-button" class="secondary-button action-tab" type="button" disabled>Re-run analysis</button>
+                  <button id="quick-export-button" class="secondary-button action-tab" type="button" disabled>Export Report</button>
+                  <button id="quick-archive-button" class="secondary-button action-tab" type="button" disabled>Archive</button>
+                  <button id="quick-delete-button" class="secondary-button danger-button action-tab" type="button" disabled>Delete</button>
+                </div>
+                <p id="workspace-action-status" class="form-status"></p>
+                <div id="workspace-progress" class="progress-strip hidden"></div>
+
+                <div class="summary-banner">
+                  <div>
+                    <p class="eyebrow">Mode</p>
+                    <strong id="workspace-mode">Guarded</strong>
+                  </div>
+                  <div>
+                    <p class="eyebrow">Interface</p>
+                    <strong id="workspace-language-pill">English</strong>
+                  </div>
+                  <div>
+                    <p class="eyebrow">Depth</p>
+                    <strong id="workspace-depth">Quick</strong>
+                  </div>
+                  <div>
+                    <p class="eyebrow">Files</p>
+                    <strong id="workspace-file-count">0 documents</strong>
+                  </div>
+                  <div>
+                    <p class="eyebrow">Confidence</p>
+                    <strong id="workspace-confidence">-</strong>
+                  </div>
+                  <div>
+                    <p class="eyebrow">Status</p>
+                    <strong id="workspace-status">Ready</strong>
+                  </div>
+                </div>
+
+                <section class="analysis-block chat-block">
+                  <div class="panel-head compact">
+                    <div>
+                      <p class="eyebrow">Chat</p>
+                      <h3>Ask the workspace instantly</h3>
+                      <p class="chat-helper">Ask about requirements, missing information, policy conflicts, evidence, risk, next actions, or anything inside the uploaded files.</p>
+                    </div>
+                  </div>
+
+                  <form id="question-form" class="stack-form">
+                    <textarea id="question-input" rows="4" placeholder="Ask a question about the request, policy, case, or uploaded files..."></textarea>
+                    <button id="ask-button" class="primary-button" type="submit" data-i18n="askWorkspace">Ask The Workspace</button>
+                  </form>
+                  <p id="qa-status" class="form-status"></p>
+                  <div id="chat-progress" class="progress-strip hidden"></div>
+                  <div id="qa-list" class="qa-list"></div>
+                </section>
+
+                <section class="workspace-section" data-section="overview">
+                  <div class="analysis-hero">
+                    <div class="hero-summary">
+                      <p class="eyebrow">Executive Brief</p>
+                      <h3>Main takeaway</h3>
+                      <p id="summary-text"></p>
+                    </div>
+                    <div class="hero-theory">
+                      <p class="eyebrow">Working Angle</p>
+                      <p id="theory-text"></p>
+                      <div class="uncertainty-box">
+                        <span>Uncertainty</span>
+                        <p id="uncertainty-text"></p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="metrics-row">
+                    <article class="metric-card">
+                      <span>Findings</span>
+                      <strong id="metric-findings">0</strong>
+                      <small>Evidence-backed</small>
+                    </article>
+                    <article class="metric-card">
+                      <span>Evidence</span>
+                      <strong id="metric-evidence">0</strong>
+                      <small>Cited sources</small>
+                    </article>
+                    <article class="metric-card">
+                      <span>Contradictions</span>
+                      <strong id="metric-contradictions">0</strong>
+                      <small>Conflicts found</small>
+                    </article>
+                    <article class="metric-card">
+                      <span>Open Questions</span>
+                      <strong id="metric-questions">0</strong>
+                      <small>Requires review</small>
+                    </article>
+                  </div>
+
+                  <div class="analysis-grid">
+                    <article class="analysis-card">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Readiness Snapshot</p>
+                          <h3>Scorecard</h3>
+                        </div>
+                      </div>
+                      <div id="scorecard-list" class="scorecard-list"></div>
+                    </article>
+
+                    <article class="analysis-card">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Actions</p>
+                          <h3>What to do next</h3>
+                        </div>
+                      </div>
+                      <div id="priorities-list" class="stack-list compact-list"></div>
+                    </article>
+                  </div>
+
+                  <div class="analysis-grid split-grid">
+                    <article class="analysis-card">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Clear Points</p>
+                          <h3>What is well supported</h3>
+                        </div>
+                      </div>
+                      <div id="strengths-list"></div>
+                    </article>
+
+                    <article class="analysis-card">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Gaps</p>
+                          <h3>What is missing or unclear</h3>
+                        </div>
+                      </div>
+                      <div id="weaknesses-list"></div>
+                    </article>
+
+                    <article class="analysis-card">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Improvements</p>
+                          <h3>Where the work can improve</h3>
+                        </div>
+                      </div>
+                      <div id="opportunities-list"></div>
+                    </article>
+
+                    <article class="analysis-card">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Risks</p>
+                          <h3>Where to be careful</h3>
+                        </div>
+                      </div>
+                      <div id="risks-list"></div>
+                    </article>
+                  </div>
+
+                  <div class="analysis-grid split-grid">
+                    <article class="analysis-card">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Grounding</p>
+                          <h3>Suggested prompts</h3>
+                        </div>
+                      </div>
+                      <div id="prompt-chip-list" class="chip-list"></div>
+                    </article>
+
+                    <article class="analysis-card">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Grounding</p>
+                          <h3>RAG status</h3>
+                        </div>
+                      </div>
+                      <div id="grounding-summary" class="stack-list compact-list"></div>
+                    </article>
+                  </div>
+
+                  <div class="analysis-grid">
+                    <article class="analysis-card full-span">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Ingestion</p>
+                          <h3>Upload reliability</h3>
+                        </div>
+                      </div>
+                      <div id="ingestion-summary" class="stack-list compact-list"></div>
+                    </article>
+                  </div>
+                  <div class="analysis-grid split-grid">
+                    <article class="analysis-card">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Signals</p>
+                          <h3>Key findings</h3>
+                        </div>
+                      </div>
+                      <div id="findings-list" class="stack-list compact-list"></div>
+                    </article>
+
+                    <article class="analysis-card">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Grounding</p>
+                          <h3>Best evidence</h3>
+                        </div>
+                      </div>
+                      <div id="evidence-list" class="stack-list compact-list"></div>
+                    </article>
+                  </div>
+
+                  <div class="analysis-grid split-grid">
+                    <article class="analysis-card full-span">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Review</p>
+                          <h3>Contradictions</h3>
+                        </div>
+                      </div>
+                      <div id="contradictions-list" class="stack-list compact-list"></div>
+                    </article>
+                  </div>
+
+                  <div class="analysis-grid">
+                    <article class="analysis-card">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Flow</p>
+                          <h3>Timeline</h3>
+                        </div>
+                      </div>
+                      <div id="timeline-list" class="timeline-list"></div>
+                    </article>
+
+                    <article class="analysis-card">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Reference</p>
+                          <h3>People, orgs, entities</h3>
+                        </div>
+                      </div>
+                      <div id="entities-list" class="tag-list"></div>
+                    </article>
+                  </div>
+
+                  <div class="analysis-grid">
+                    <article class="analysis-card">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Next Steps</p>
+                          <h3>What to check next</h3>
+                        </div>
+                      </div>
+                      <div class="two-list-grid">
+                        <div>
+                          <p class="sub-label">Open questions</p>
+                          <div id="questions-list"></div>
+                        </div>
+                        <div>
+                          <p class="sub-label">Suggested prompts</p>
+                          <div id="suggested-list"></div>
+                        </div>
+                      </div>
+                    </article>
+
+                    <article class="analysis-card">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Warnings</p>
+                          <h3>Ambiguity and watchouts</h3>
+                        </div>
+                      </div>
+                      <div id="warnings-list"></div>
+                    </article>
+                  </div>
+                </section>
+
+                <section class="workspace-section hidden" data-section="files">
+                  <div class="analysis-grid">
+                    <article class="analysis-card full-span">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Source Library</p>
+                          <h3>Uploaded documents</h3>
+                        </div>
+                      </div>
+                      <div id="file-library-list" class="stack-list file-library-list"></div>
+                    </article>
+                  </div>
+                </section>
+
+                <section class="workspace-section hidden" data-section="studio">
+                  <div class="analysis-grid">
+                    <article class="analysis-card full-span">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow" data-i18n="agentStudio">Agent Studio</p>
+                          <h3 data-i18n="agentStudioTitle">Create a file from this workspace</h3>
+                        </div>
+                      </div>
+                      <form id="agent-task-form" class="stack-form simplified-studio-form">
+                        <label class="field">
+                          <span data-i18n="whatCreate">What do you want to create?</span>
+                          <textarea id="agent-task-instructions" rows="5" data-i18n-placeholder="agentInstructionsPlaceholder" placeholder="Example: prepare a compliance review, revised document, PowerPoint briefing, internal memo, checklist, or policy comparison from this workspace."></textarea>
+                          <small data-i18n="agentHelp">Choose a suggestion or describe the file you need. The system will pick sensible defaults and save the output here.</small>
+                        </label>
+                        <div id="agent-task-prompts" class="visual-presets">
+                          <button type="button" class="ghost-button agent-prompt-chip" data-i18n="powerPointDeck" data-agent-title="PowerPoint briefing deck" data-agent-format="pptx" data-agent-provider="anthropic" data-agent-filename="employee-briefing-deck" data-agent-instructions="Create a PowerPoint briefing deck from this workspace with executive summary, key findings, evidence, risks or gaps, recommended next actions, and human review notes. Keep slides concise and employee-ready.">PowerPoint deck</button>
+                          <button type="button" class="ghost-button agent-prompt-chip" data-i18n="complianceReview" data-agent-title="Legal and compliance review" data-agent-filename="legal-compliance-review" data-agent-instructions="Review the workspace documents for legal, policy, procedural, and compliance risks. Identify what is supported, what is unclear, what requires legal or supervisor review, missing clauses or approvals, and practical corrections. Do not provide final legal advice; flag review points clearly.">Compliance review</button>
+                          <button type="button" class="ghost-button agent-prompt-chip" data-i18n="revisedDocument" data-agent-title="Revised document draft" data-agent-filename="revised-document-draft" data-agent-instructions="Create a revised draft based on the uploaded document and analysis recommendations. Preserve the original intent, improve clarity and structure, add missing sections where appropriate, mark assumptions clearly, and include an edits summary at the end.">Draft revised document</button>
+                          <button type="button" class="ghost-button agent-prompt-chip" data-i18n="internalMemo" data-agent-title="Internal memo" data-agent-instructions="Prepare an internal memo for UAEICP employees with issue, context, evidence, decision points, risks, and recommended action.">Internal memo</button>
+                          <button type="button" class="ghost-button agent-prompt-chip" data-i18n="serviceChecklist" data-agent-title="Service checklist" data-agent-instructions="Prepare a practical checklist for processing this request, including required documents, verification steps, dependencies, and escalation triggers.">Service checklist</button>
+                          <button type="button" class="ghost-button agent-prompt-chip" data-i18n="caseSummary" data-agent-title="Case summary" data-agent-instructions="Prepare a concise case summary with background, key facts, supporting evidence, missing information, risks, and recommended next actions.">Case summary</button>
+                          <button type="button" class="ghost-button agent-prompt-chip" data-i18n="policyComparison" data-agent-title="Policy comparison" data-agent-instructions="Compare the relevant policy or document positions, identify conflicts or gaps, and summarize what an employee should verify before acting.">Policy comparison</button>
+                        </div>
+                        <details class="advanced-studio-options">
+                          <summary data-i18n="advancedOptions">Advanced options</summary>
+                          <div class="two-list-grid">
+                            <label class="field">
+                              <span data-i18n="taskTitle">Task title</span>
+                              <input id="agent-task-title" type="text" data-i18n-placeholder="taskTitlePlaceholder" placeholder="Internal service memo" />
+                            </label>
+                            <label class="field">
+                              <span data-i18n="outputFileName">Output file name</span>
+                              <input id="agent-output-filename" type="text" data-i18n-placeholder="outputFileNamePlaceholder" placeholder="service-request-summary" />
+                            </label>
+                          </div>
+                          <div class="two-list-grid">
+                            <label class="field">
+                              <span data-i18n="outputFormat">Output format</span>
+                              <select id="agent-output-format">
+                                <option value="markdown">Markdown</option>
+                                <option value="txt">Text</option>
+                                <option value="json">JSON</option>
+                                <option value="pptx">PowerPoint (.pptx)</option>
+                              </select>
+                            </label>
+                            <label class="field">
+                              <span data-i18n="agentProvider">Agent provider</span>
+                              <select id="agent-llm-provider">
+                                <option value="openai">OpenAI</option>
+                                <option value="anthropic">Claude / Anthropic</option>
+                                <option value="ollama">Ollama</option>
+                              </select>
+                            </label>
+                          </div>
+                          <label class="field">
+                            <span data-i18n="agentModel">Agent model</span>
+                            <select id="agent-llm-model"></select>
+                            <small data-i18n="agentModelHelp">For PowerPoint decks, Claude is recommended for slide structure and concise wording.</small>
+                          </label>
+                        </details>
+                        <button id="run-agent-task-button" class="primary-button" type="submit" data-i18n="createFile">Create File</button>
+                        <p id="agent-task-status" class="form-status"></p>
+                      </form>
+                      <div id="agent-task-progress" class="progress-strip hidden"></div>
+                      <div id="agent-task-list" class="stack-list compact-list"></div>
+                    </article>
+                  </div>
+                  <div class="analysis-grid">
+                    <article class="analysis-card full-span">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow" data-i18n="visualStudio">Visual Studio</p>
+                          <h3 data-i18n="visualStudioTitle">Generate internal communication visuals</h3>
+                        </div>
+                      </div>
+                      <form id="visual-form" class="stack-form">
+                        <input id="visual-type" type="hidden" value="general" />
+                        <div class="two-list-grid">
+                          <label class="field">
+                            <span data-i18n="generationMode">Generation mode</span>
+                            <select id="visual-generation-mode">
+                              <option value="refine" data-i18n="refineCurrentVisual">Refine current visual</option>
+                              <option value="new" data-i18n="generateNewVisual">Generate something new</option>
+                            </select>
+                          </label>
+                          <label class="field">
+                            <span data-i18n="aspectRatio">Aspect ratio</span>
+                            <select id="visual-aspect-ratio">
+                              <option value="1:1" data-i18n="square">Square</option>
+                              <option value="3:2" data-i18n="landscape">Landscape</option>
+                              <option value="2:3" data-i18n="portrait">Portrait</option>
+                            </select>
+                          </label>
+                        </div>
+                        <div class="field">
+                          <span data-i18n="refinementBase">Refinement base</span>
+                          <div id="visual-base-note" class="info-card" data-i18n="refinementBaseHelp">If this workspace already has a visual, new prompts will refine the selected base image.</div>
+                        </div>
+                        <label class="field">
+                          <span data-i18n="visualPrompt">Visual prompt</span>
+                          <textarea id="visual-prompt" rows="4" data-i18n-placeholder="visualPromptPlaceholder" placeholder="Example: create a clean UAEICP-style infographic explaining the service workflow, required documents, and review steps. Then I can refine it further."></textarea>
+                          <small data-i18n="visualCreditHelp">This uses extra AI credits and only runs when you click the button below. Keep prompting to refine the latest image until it looks right.</small>
+                        </label>
+                        <div class="visual-presets" id="visual-presets">
+                          <button type="button" class="ghost-button visual-preset-chip" data-visual-prompt="Create a clean internal infographic based on this workspace.">Infographic</button>
+                          <button type="button" class="ghost-button visual-preset-chip" data-visual-prompt="Create a process flow diagram based on this workspace.">Process flow</button>
+                          <button type="button" class="ghost-button visual-preset-chip" data-visual-prompt="Create a presentation cover visual based on this workspace.">Presentation cover</button>
+                          <button type="button" class="ghost-button visual-preset-chip" data-visual-prompt="Create an employee quick-reference card based on this workspace.">Quick-reference card</button>
+                          <button type="button" class="ghost-button visual-preset-chip" data-visual-prompt="Refine the current design to feel clearer, more official, and easier for employees to understand.">Refine current design</button>
+                        </div>
+                        <button id="generate-visual-button" class="primary-button" type="submit" data-i18n="generateVisual">Generate Or Refine Visual</button>
+                        <p id="visual-status" class="form-status"></p>
+                      </form>
+                      <div id="visual-progress" class="progress-strip hidden"></div>
+                      <div id="visual-gallery" class="visual-gallery"></div>
+                    </article>
+                  </div>
+                </section>
+
+                <section class="workspace-section hidden" data-section="review">
+                  <div class="analysis-grid">
+                    <article class="analysis-card full-span">
+                      <div class="section-title-row">
+                        <div>
+                          <p class="eyebrow">Human Review</p>
+                          <h3>Verification workflow</h3>
+                        </div>
+                      </div>
+                      <form id="review-form" class="stack-form review-form">
+                        <div class="two-list-grid">
+                          <label class="field">
+                            <span>Status</span>
+                            <select id="review-status">
+                              <option value="reviewed">Reviewed</option>
+                              <option value="needs_followup">Needs follow-up</option>
+                              <option value="verified">Verified</option>
+                            </select>
+                          </label>
+                          <label class="field">
+                            <span>Note</span>
+                            <input id="review-note" type="text" placeholder="What did you verify or what still needs review?" />
+                          </label>
+                        </div>
+                        <button id="review-button" class="secondary-button" type="submit">Save Review</button>
+                        <p id="review-status-text" class="form-status"></p>
+                      </form>
+                      <div id="review-list" class="stack-list compact-list"></div>
+                    </article>
+                  </div>
+                </section>
+              </div>
+            </section>
+          </section>
+        </main>
+      </section>
+    </div>
+
+    <script src="/script.js?v=cleanup-1"></script>
+  </body>
+</html>

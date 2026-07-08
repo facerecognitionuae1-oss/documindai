@@ -1,0 +1,11 @@
+.env
+node_modules
+data/
+comparison_extract/
+pdf_extract.txt
+Document_Analysis_Workspace_Documentation.pdf
+*.log
+deploy/_package_tmp/
+deploy/*.zip
+deploy/*.tar.gz
+Research_Intelligence_Studio_Export.zip
