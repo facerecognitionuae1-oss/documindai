@@ -62,6 +62,11 @@ const OPENAI_MODELS = ["gpt-5.5", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.1", "gp
 const ANTHROPIC_MODELS = ["claude-opus-4-1-20250805", "claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219"];
 const OLLAMA_MODELS = ["qwen3:8b", "qwen3:14b", "qwen3:30b", "qwen3:32b", "qwen2.5:7b", "qwen2.5:14b", "qwen2.5:32b", "llama3.1:8b", "llama3.1:70b"];
 
+fs.mkdirSync(DATA_DIR, { recursive: true });
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+fs.mkdirSync(GENERATED_DIR, { recursive: true });
+fs.mkdirSync(OUTPUTS_DIR, { recursive: true });
+
 const client = HAS_OPENAI_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 const sqliteDb = USE_POSTGRES ? null : new Database(DB_PATH);
 const pgPool = USE_POSTGRES ? new Pool({
@@ -227,11 +232,6 @@ const languageInstructions = {
   en: "Write the final answer in English only.",
   ar: "Write the final answer in Arabic only. Keep citations and references readable even when file names are in English."
 };
-
-fs.mkdirSync(DATA_DIR, { recursive: true });
-fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-fs.mkdirSync(GENERATED_DIR, { recursive: true });
-fs.mkdirSync(OUTPUTS_DIR, { recursive: true });
 
 app.use(express.json({ limit: "2mb" }));
 app.use(
