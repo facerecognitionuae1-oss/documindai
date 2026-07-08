@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&family=Noto+Sans+Arabic:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=ppt-workspace-1" />
+    <link rel="stylesheet" href="/styles.css?v=provider-bootstrap-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -750,6 +750,35 @@
       </section>
     </div>
 
-    <script src="/script.js?v=ppt-workspace-1"></script>
+    <script>
+      (async () => {
+        try {
+          const response = await fetch("/api/health", { cache: "no-store" });
+          const data = await response.json();
+          const providers = (data.providerOptions || []).filter((provider) => provider.enabled !== false && provider.models?.length);
+          const fillProvider = (providerId, modelId) => {
+            const providerSelect = document.querySelector(providerId);
+            const modelSelect = document.querySelector(modelId);
+            if (!providerSelect || !modelSelect || !providers.length) return;
+            providerSelect.innerHTML = providers.map((provider) => `<option value="${provider.value}">${provider.label || provider.value}</option>`).join("");
+            providerSelect.value = providers.some((provider) => provider.value === data.defaults?.provider)
+              ? data.defaults.provider
+              : providers[0].value;
+            const fillModels = () => {
+              const selected = providers.find((provider) => provider.value === providerSelect.value) || providers[0];
+              modelSelect.innerHTML = (selected.models || []).map((model) => `<option value="${model}">${model}</option>`).join("");
+              modelSelect.value = selected.models?.includes(data.defaults?.model) ? data.defaults.model : selected.models?.[0] || "";
+            };
+            providerSelect.addEventListener("change", fillModels);
+            fillModels();
+          };
+          fillProvider("#llm-provider", "#llm-model");
+          fillProvider("#agent-llm-provider", "#agent-llm-model");
+        } catch (_error) {
+          // Main app script will show the detailed configuration error.
+        }
+      })();
+    </script>
+    <script src="/script.js?v=provider-bootstrap-1"></script>
   </body>
 </html>

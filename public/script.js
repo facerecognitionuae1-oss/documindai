@@ -339,7 +339,7 @@ async function boot() {
 
 async function loadHealth() {
   try {
-    const response = await fetch("/api/health");
+    const response = await fetch("/api/health", { cache: "no-store" });
     const data = await response.json();
     state.providerOptions = data.providerOptions || [];
     state.defaultProvider = data.defaults?.provider || state.providerOptions[0]?.value || "";
