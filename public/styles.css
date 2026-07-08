@@ -392,6 +392,42 @@ h3 {
   font-weight: 800;
 }
 
+.field-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.field-label span {
+  min-width: 0;
+}
+
+.field-label em {
+  flex-shrink: 0;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(11, 107, 85, 0.1);
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.requirement-note {
+  display: block;
+  padding: 10px 12px;
+  border: 1px solid rgba(176, 123, 58, 0.18);
+  border-radius: 14px;
+  background: rgba(216, 182, 129, 0.12);
+}
+
+.requirement-note strong {
+  color: var(--unguarded);
+}
+
 .field small {
   font-size: 0.82rem;
 }

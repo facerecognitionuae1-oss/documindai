@@ -550,7 +550,7 @@ async function createCase(event) {
   const files = state.stagedUploadFiles.slice();
   const intakeText = String(document.querySelector("#intake-text")?.value || "").trim();
   if (!files.length && !intakeText) {
-    setStatus(formStatus, state.uiLanguage === "ar" ? "أضف مستندات أو اكتب وصفًا للمشروع أولًا." : "Add documents or enter a project brief first.", true);
+    setStatus(formStatus, tr("addWorkspaceMaterialFirst"), true);
     return;
   }
 
@@ -565,13 +565,13 @@ async function createCase(event) {
   payload.append("intakeText", intakeText);
   files.forEach((file) => payload.append("documents", file));
 
-  setStatus(formStatus, state.uiLanguage === "ar" ? "جارٍ رفع الملفات وبناء مساحة العمل..." : "Uploading files and building the workspace...");
+  setStatus(formStatus, tr("creatingWorkspace"));
   startProgress([
-    state.uiLanguage === "ar" ? "جارٍ التحقق من تنسيقات الملفات ودفعة الرفع..." : "Validating formats and upload batch...",
-    state.uiLanguage === "ar" ? "جارٍ رفع المستندات..." : "Uploading documents...",
-    state.uiLanguage === "ar" ? "جارٍ فهرسة المستندات للاسترجاع..." : "Indexing documents for retrieval...",
-    state.uiLanguage === "ar" ? "جارٍ تشغيل تحليل موثق بالاستشهادات..." : "Running citation-grounded analysis..."
-  ]);
+    tr("validatingUpload"),
+    tr("uploadingDocuments"),
+    tr("indexingDocuments"),
+    tr("runningGroundedAnalysis")
+  ], null);
   setButtonLoading(document.querySelector("#analyze-button"), true, tr("analyzing"));
 
   try {
@@ -585,17 +585,17 @@ async function createCase(event) {
       throw new Error(data.error || "Workspace creation failed.");
     }
 
-    const result = await waitForJob(data.jobId, formStatus);
+    const result = await waitForJob(data.jobId, formStatus, null, 240000);
     await loadCase(result.caseId);
     caseForm.reset();
     state.stagedUploadFiles = [];
     documentsInput.value = "";
     renderSelectedFiles();
-    setStatus(formStatus, state.uiLanguage === "ar" ? "اكتمل تحليل مساحة العمل." : "Workspace analysis complete.");
+    setStatus(formStatus, tr("workspaceComplete"));
   } catch (error) {
-    setStatus(formStatus, error.message || (state.uiLanguage === "ar" ? "فشل إنشاء مساحة العمل." : "Workspace creation failed."), true);
+    setStatus(formStatus, error.message || tr("workspaceCreationFailed"), true);
   } finally {
-    stopProgress();
+    stopProgress(null);
     setButtonLoading(document.querySelector("#analyze-button"), false, tr("uploadAnalyze"));
   }
 }
@@ -1749,7 +1749,8 @@ function setProgressState(target, message) {
   }
 }
 
-async function waitForJob(jobId, statusTarget, progressTarget = chatProgress) {
+async function waitForJob(jobId, statusTarget, progressTarget = chatProgress, timeoutMs = 180000) {
+  const startedAt = Date.now();
   while (true) {
     const response = await fetch(`/api/jobs/${jobId}`);
     const data = await response.json();
@@ -1768,6 +1769,10 @@ async function waitForJob(jobId, statusTarget, progressTarget = chatProgress) {
 
     if (data.status === "failed") {
       throw new Error(data.error || "Job failed.");
+    }
+
+    if (Date.now() - startedAt > timeoutMs) {
+      throw new Error(tr("jobTimeout"));
     }
 
     await new Promise((resolve) => setTimeout(resolve, 900));
@@ -1879,6 +1884,23 @@ function syncWorkspaceLanguageToInterface() {
 
 Object.assign(translations.en, {
   workspaceTypeUnified: "UAEICP Employee Support",
+  optionalBadge: "Optional",
+  requiredBadge: "Required",
+  workspaceTitleHelp: "Leave blank to let the system name the workspace automatically.",
+  uploadFilesText: "Upload one or many files",
+  requestBriefLabel: "Request or task brief",
+  requestBriefPlaceholder: "Describe the employee request, case background, policy question, memo requirement, or task you want help with.",
+  sourceRequiredHelp: "upload at least one file or write a brief before creating the workspace.",
+  addWorkspaceMaterialFirst: "Upload at least one file or write a brief before creating the workspace.",
+  creatingWorkspace: "Creating workspace...",
+  workspaceComplete: "Workspace analysis complete.",
+  workspaceCreationFailed: "Workspace creation failed.",
+  validatingUpload: "Validating formats and upload batch...",
+  uploadingDocuments: "Uploading documents...",
+  indexingDocuments: "Indexing documents for retrieval...",
+  runningGroundedAnalysis: "Running citation-grounded analysis...",
+  jobTimeout: "This is taking longer than expected. The workspace may still be processing; refresh history in a moment or try a faster model.",
+  uploadAnalyze: "Create Workspace",
   historyEyebrow: "History",
   savedWorkspaces: "Saved workspaces",
   profileEyebrow: "Profile",
@@ -2152,6 +2174,23 @@ Object.assign(translations.ar, {
   visualCreditHelp: "\u064a\u0633\u062a\u062e\u062f\u0645 \u0647\u0630\u0627 \u0623\u0631\u0635\u062f\u0629 AI \u0625\u0636\u0627\u0641\u064a\u0629 \u0648\u0644\u0646 \u064a\u0639\u0645\u0644 \u0625\u0644\u0627 \u0639\u0646\u062f \u0627\u0644\u0636\u063a\u0637 \u0639\u0644\u0649 \u0627\u0644\u0632\u0631.",
   generateVisual: "\u0625\u0646\u0634\u0627\u0621 \u0623\u0648 \u062a\u062d\u0633\u064a\u0646 \u0627\u0644\u0645\u0631\u0626\u064a",
   workspaceTypeUnified: "\u062f\u0639\u0645 \u0645\u0648\u0638\u0641\u064a UAEICP",
+  optionalBadge: "\u0627\u062e\u062a\u064a\u0627\u0631\u064a",
+  requiredBadge: "\u0645\u0637\u0644\u0648\u0628",
+  workspaceTitleHelp: "\u0627\u062a\u0631\u0643\u0647 \u0641\u0627\u0631\u063a\u064b\u0627 \u0644\u064a\u0642\u0648\u0645 \u0627\u0644\u0646\u0638\u0627\u0645 \u0628\u062a\u0633\u0645\u064a\u0629 \u0645\u0633\u0627\u062d\u0629 \u0627\u0644\u0639\u0645\u0644 \u062a\u0644\u0642\u0627\u0626\u064a\u064b\u0627.",
+  uploadFilesText: "\u0627\u0631\u0641\u0639 \u0645\u0644\u0641\u064b\u0627 \u0648\u0627\u062d\u062f\u064b\u0627 \u0623\u0648 \u0639\u062f\u0629 \u0645\u0644\u0641\u0627\u062a",
+  requestBriefLabel: "\u0648\u0635\u0641 \u0627\u0644\u0637\u0644\u0628 \u0623\u0648 \u0627\u0644\u0645\u0647\u0645\u0629",
+  requestBriefPlaceholder: "\u0627\u0643\u062a\u0628 \u0627\u0644\u0637\u0644\u0628\u060c \u0627\u0644\u062e\u0644\u0641\u064a\u0629\u060c \u0633\u0624\u0627\u0644 \u0627\u0644\u0633\u064a\u0627\u0633\u0629\u060c \u0645\u062a\u0637\u0644\u0628 \u0627\u0644\u0645\u0630\u0643\u0631\u0629\u060c \u0623\u0648 \u0627\u0644\u0645\u0647\u0645\u0629 \u0627\u0644\u062a\u064a \u062a\u0631\u064a\u062f \u0627\u0644\u0645\u0633\u0627\u0639\u062f\u0629 \u0641\u064a\u0647\u0627.",
+  sourceRequiredHelp: "\u0627\u0631\u0641\u0639 \u0645\u0644\u0641\u064b\u0627 \u0648\u0627\u062d\u062f\u064b\u0627 \u0639\u0644\u0649 \u0627\u0644\u0623\u0642\u0644 \u0623\u0648 \u0627\u0643\u062a\u0628 \u0648\u0635\u0641\u064b\u0627 \u0642\u0628\u0644 \u0625\u0646\u0634\u0627\u0621 \u0645\u0633\u0627\u062d\u0629 \u0627\u0644\u0639\u0645\u0644.",
+  addWorkspaceMaterialFirst: "\u0627\u0631\u0641\u0639 \u0645\u0644\u0641\u064b\u0627 \u0648\u0627\u062d\u062f\u064b\u0627 \u0639\u0644\u0649 \u0627\u0644\u0623\u0642\u0644 \u0623\u0648 \u0627\u0643\u062a\u0628 \u0648\u0635\u0641\u064b\u0627 \u0642\u0628\u0644 \u0625\u0646\u0634\u0627\u0621 \u0645\u0633\u0627\u062d\u0629 \u0627\u0644\u0639\u0645\u0644.",
+  creatingWorkspace: "\u062c\u0627\u0631\u064d \u0625\u0646\u0634\u0627\u0621 \u0645\u0633\u0627\u062d\u0629 \u0627\u0644\u0639\u0645\u0644...",
+  workspaceComplete: "\u0627\u0643\u062a\u0645\u0644 \u062a\u062d\u0644\u064a\u0644 \u0645\u0633\u0627\u062d\u0629 \u0627\u0644\u0639\u0645\u0644.",
+  workspaceCreationFailed: "\u0641\u0634\u0644 \u0625\u0646\u0634\u0627\u0621 \u0645\u0633\u0627\u062d\u0629 \u0627\u0644\u0639\u0645\u0644.",
+  validatingUpload: "\u062c\u0627\u0631\u064d \u0627\u0644\u062a\u062d\u0642\u0642 \u0645\u0646 \u0627\u0644\u062a\u0646\u0633\u064a\u0642\u0627\u062a \u0648\u062f\u0641\u0639\u0629 \u0627\u0644\u0631\u0641\u0639...",
+  uploadingDocuments: "\u062c\u0627\u0631\u064d \u0631\u0641\u0639 \u0627\u0644\u0645\u0633\u062a\u0646\u062f\u0627\u062a...",
+  indexingDocuments: "\u062c\u0627\u0631\u064d \u0641\u0647\u0631\u0633\u0629 \u0627\u0644\u0645\u0633\u062a\u0646\u062f\u0627\u062a \u0644\u0644\u0627\u0633\u062a\u0631\u062c\u0627\u0639...",
+  runningGroundedAnalysis: "\u062c\u0627\u0631\u064d \u062a\u0634\u063a\u064a\u0644 \u062a\u062d\u0644\u064a\u0644 \u0645\u0648\u062b\u0642 \u0628\u0627\u0644\u0627\u0633\u062a\u0634\u0647\u0627\u062f\u0627\u062a...",
+  jobTimeout: "\u0627\u0633\u062a\u063a\u0631\u0642 \u0627\u0644\u0623\u0645\u0631 \u0648\u0642\u062a\u064b\u0627 \u0623\u0637\u0648\u0644 \u0645\u0646 \u0627\u0644\u0645\u062a\u0648\u0642\u0639. \u0642\u062f \u062a\u0643\u0648\u0646 \u0645\u0633\u0627\u062d\u0629 \u0627\u0644\u0639\u0645\u0644 \u0645\u0627 \u0632\u0627\u0644\u062a \u0642\u064a\u062f \u0627\u0644\u0645\u0639\u0627\u0644\u062c\u0629\u061b \u062d\u062f\u0651\u062b \u0627\u0644\u0633\u062c\u0644 \u0628\u0639\u062f \u0642\u0644\u064a\u0644 \u0623\u0648 \u062c\u0631\u0651\u0628 \u0646\u0645\u0648\u0630\u062c\u064b\u0627 \u0623\u0633\u0631\u0639.",
+  uploadAnalyze: "\u0625\u0646\u0634\u0627\u0621 \u0645\u0633\u0627\u062d\u0629 \u0639\u0645\u0644",
   historyEyebrow: "\u0627\u0644\u0633\u062c\u0644",
   savedWorkspaces: "\u0645\u0633\u0627\u062d\u0627\u062a \u0627\u0644\u0639\u0645\u0644 \u0627\u0644\u0645\u062d\u0641\u0648\u0638\u0629",
   profileEyebrow: "\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0634\u062e\u0635\u064a",

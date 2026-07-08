@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&family=Noto+Sans+Arabic:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=mobile-polish-1" />
+    <link rel="stylesheet" href="/styles.css?v=form-polish-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -91,8 +91,12 @@
 
               <form id="case-form" class="stack-form">
                 <label class="field">
-                  <span data-i18n="workspaceTitle">Workspace title</span>
+                  <span class="field-label">
+                    <span data-i18n="workspaceTitle">Workspace title</span>
+                    <em data-i18n="optionalBadge">Optional</em>
+                  </span>
                   <input id="case-title" name="title" type="text" data-i18n-placeholder="workspaceTitlePlaceholder" placeholder="Policy circular / service request / internal memo" />
+                  <small data-i18n="workspaceTitleHelp">Leave blank to let the system name the workspace automatically.</small>
                 </label>
 
                 <label class="field">
@@ -154,23 +158,29 @@
                 </div>
 
                 <label class="field">
-                  <span data-i18n="documentsLabel">Documents</span>
+                  <span class="field-label">
+                    <span data-i18n="documentsLabel">Documents</span>
+                    <em data-i18n="optionalBadge">Optional</em>
+                  </span>
                   <div class="upload-zone">
                     <input id="documents" name="documents" type="file" multiple />
-                    <strong>Upload one or many files</strong>
+                    <strong data-i18n="uploadFilesText">Upload one or many files</strong>
                     <small id="documents-help">Select multiple files at once, or add more files in separate picks before analyzing.</small>
                   </div>
                 </label>
 
                 <label class="field">
-                  <span>Request or task brief</span>
-                  <textarea id="intake-text" name="intakeText" rows="5" placeholder="Optional: describe the employee request, case background, policy question, memo requirement, or task you want help with."></textarea>
-                  <small>You can start with text only, files only, or both together.</small>
+                  <span class="field-label">
+                    <span data-i18n="requestBriefLabel">Request or task brief</span>
+                    <em data-i18n="optionalBadge">Optional</em>
+                  </span>
+                  <textarea id="intake-text" name="intakeText" rows="5" data-i18n-placeholder="requestBriefPlaceholder" placeholder="Describe the employee request, case background, policy question, memo requirement, or task you want help with."></textarea>
+                  <small class="requirement-note"><strong data-i18n="requiredBadge">Required</strong>: <span data-i18n="sourceRequiredHelp">upload at least one file or write a brief before creating the workspace.</span></small>
                 </label>
 
                 <div id="selected-files" class="selected-files empty" data-empty-text-key="noDocumentsSelected">No documents selected yet.</div>
 
-                <button id="analyze-button" class="primary-button" type="submit" data-i18n="uploadAnalyze">Upload And Analyze</button>
+                <button id="analyze-button" class="primary-button" type="submit" data-i18n="uploadAnalyze">Create Workspace</button>
                 <p id="form-status" class="form-status"></p>
               </form>
             </section>
@@ -740,6 +750,6 @@
       </section>
     </div>
 
-    <script src="/script.js?v=cleanup-1"></script>
+    <script src="/script.js?v=form-polish-1"></script>
   </body>
 </html>

@@ -873,10 +873,10 @@ async function createCaseWithAnalysis({ title, mode, analysisDepth, workspaceTyp
   let vectorStore = null;
   let uploadedFiles = [];
 
-  if (ACTIVE_PROVIDER === "openai") {
+  if (llmProvider === "openai") {
     jobRef.step = "Creating vector store";
     vectorStore = await client.vectorStores.create({
-      name: title,
+      name: title || "Untitled workspace",
       expires_after: { anchor: "last_active_at", days: 7 }
     });
 
