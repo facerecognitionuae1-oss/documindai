@@ -1,7 +1,7 @@
 const state = {
   mode: "guarded",
   activeTab: "overview",
-  uiLanguage: localStorage.getItem("research-intel-ui-language") || "en",
+  uiLanguage: "en",
   providerOptions: [],
   defaultProvider: "openai",
   defaultModel: "gpt-5.5",
@@ -138,6 +138,7 @@ const userList = document.querySelector("#user-list");
 
 const caseForm = document.querySelector("#case-form");
 const documentsInput = document.querySelector("#documents");
+const createPresentationInput = document.querySelector("#create-presentation");
 const selectedFiles = document.querySelector("#selected-files");
 const formStatus = document.querySelector("#form-status");
 const historyList = document.querySelector("#history-list");
@@ -560,6 +561,7 @@ async function createCase(event) {
   payload.append("llmProvider", llmProviderSelect.value);
   payload.append("llmModel", llmModelSelect.value);
   payload.append("intakeText", intakeText);
+  payload.append("createPresentation", createPresentationInput?.checked ? "true" : "false");
   files.forEach((file) => payload.append("documents", file));
 
   setStatus(formStatus, tr("creatingWorkspace"));
@@ -1894,6 +1896,8 @@ Object.assign(translations.en, {
   requiredBadge: "Required",
   workspaceTitleHelp: "Leave blank to let the system name the workspace automatically.",
   uploadFilesText: "Upload one or many files",
+  createPresentationOption: "Also create a PowerPoint deck",
+  createPresentationHelp: "After analysis, generate a briefing deck and save it in the same workspace as a reference output.",
   requestBriefLabel: "Request or task brief",
   requestBriefPlaceholder: "Describe the employee request, case background, policy question, memo requirement, or task you want help with.",
   sourceRequiredHelp: "upload at least one file or write a brief before creating the workspace.",
@@ -2184,6 +2188,8 @@ Object.assign(translations.ar, {
   requiredBadge: "\u0645\u0637\u0644\u0648\u0628",
   workspaceTitleHelp: "\u0627\u062a\u0631\u0643\u0647 \u0641\u0627\u0631\u063a\u064b\u0627 \u0644\u064a\u0642\u0648\u0645 \u0627\u0644\u0646\u0638\u0627\u0645 \u0628\u062a\u0633\u0645\u064a\u0629 \u0645\u0633\u0627\u062d\u0629 \u0627\u0644\u0639\u0645\u0644 \u062a\u0644\u0642\u0627\u0626\u064a\u064b\u0627.",
   uploadFilesText: "\u0627\u0631\u0641\u0639 \u0645\u0644\u0641\u064b\u0627 \u0648\u0627\u062d\u062f\u064b\u0627 \u0623\u0648 \u0639\u062f\u0629 \u0645\u0644\u0641\u0627\u062a",
+  createPresentationOption: "\u0623\u0646\u0634\u0626 \u0639\u0631\u0636 PowerPoint \u0623\u064a\u0636\u064b\u0627",
+  createPresentationHelp: "\u0628\u0639\u062f \u0627\u0644\u062a\u062d\u0644\u064a\u0644\u060c \u0633\u064a\u062a\u0645 \u0625\u0646\u0634\u0627\u0621 \u0639\u0631\u0636 \u0645\u0648\u062c\u0632 \u0648\u062d\u0641\u0638\u0647 \u0641\u064a \u0646\u0641\u0633 \u0645\u0633\u0627\u062d\u0629 \u0627\u0644\u0639\u0645\u0644 \u0643\u0645\u062e\u0631\u062c \u0645\u0631\u062c\u0639\u064a.",
   requestBriefLabel: "\u0648\u0635\u0641 \u0627\u0644\u0637\u0644\u0628 \u0623\u0648 \u0627\u0644\u0645\u0647\u0645\u0629",
   requestBriefPlaceholder: "\u0627\u0643\u062a\u0628 \u0627\u0644\u0637\u0644\u0628\u060c \u0627\u0644\u062e\u0644\u0641\u064a\u0629\u060c \u0633\u0624\u0627\u0644 \u0627\u0644\u0633\u064a\u0627\u0633\u0629\u060c \u0645\u062a\u0637\u0644\u0628 \u0627\u0644\u0645\u0630\u0643\u0631\u0629\u060c \u0623\u0648 \u0627\u0644\u0645\u0647\u0645\u0629 \u0627\u0644\u062a\u064a \u062a\u0631\u064a\u062f \u0627\u0644\u0645\u0633\u0627\u0639\u062f\u0629 \u0641\u064a\u0647\u0627.",
   sourceRequiredHelp: "\u0627\u0631\u0641\u0639 \u0645\u0644\u0641\u064b\u0627 \u0648\u0627\u062d\u062f\u064b\u0627 \u0639\u0644\u0649 \u0627\u0644\u0623\u0642\u0644 \u0623\u0648 \u0627\u0643\u062a\u0628 \u0648\u0635\u0641\u064b\u0627 \u0642\u0628\u0644 \u0625\u0646\u0634\u0627\u0621 \u0645\u0633\u0627\u062d\u0629 \u0627\u0644\u0639\u0645\u0644.",

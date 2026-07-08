@@ -397,6 +397,7 @@ app.post("/api/cases", requireUser, upload.array("documents", 50), async (req, r
   const llmProvider = normalizeLlmProvider(req.body.llmProvider);
   const llmModel = normalizeLlmModel(llmProvider, req.body.llmModel);
   const intakeText = normalizeText(req.body.intakeText || "");
+  const createPresentation = String(req.body.createPresentation || "").toLowerCase() === "true";
   const title = sanitizeTitle(req.body.title);
   if (!canUseProvider(llmProvider)) {
     return res.status(400).json({ error: providerUnavailableMessage(llmProvider) });
@@ -420,21 +421,34 @@ app.post("/api/cases", requireUser, upload.array("documents", 50), async (req, r
     ownerRole: req.currentUser.role,
     initialStep: "Queued for document ingestion",
     runner: async (jobRef) => {
-      jobRef.step = "Preparing upload metadata";
-      const createdCase = await createCaseWithAnalysis({
-        title,
-        mode,
-        analysisDepth,
-        workspaceType,
-        workspaceLanguage,
-        llmProvider,
-        llmModel,
-        tempFiles,
-        owner: req.currentUser,
-        jobRef
-      });
-      cleanupTempFiles(tempFiles);
-      return { caseId: createdCase.id };
+      try {
+        jobRef.step = "Preparing upload metadata";
+        const createdCase = await createCaseWithAnalysis({
+          title,
+          mode,
+          analysisDepth,
+          workspaceType,
+          workspaceLanguage,
+          llmProvider,
+          llmModel,
+          tempFiles,
+          owner: req.currentUser,
+          jobRef
+        });
+        if (createPresentation) {
+          await createInitialPresentationForCase({
+            record: createdCase,
+            owner: req.currentUser,
+            workspaceLanguage,
+            preferredProvider: HAS_ANTHROPIC_CONFIG ? "anthropic" : llmProvider,
+            preferredModel: HAS_ANTHROPIC_CONFIG ? ANTHROPIC_MODEL : llmModel,
+            jobRef
+          });
+        }
+        return { caseId: createdCase.id };
+      } finally {
+        cleanupTempFiles(tempFiles);
+      }
     }
   });
 
@@ -875,8 +889,125 @@ async function generateWorkspaceTask({
     summary: normalizeText(result.summary),
     outputFilename: finalFilename,
     outputPath,
-    outputUrl: `/outputs/${encodeURIComponent(finalFilename)}`
+    outputUrl: `/outputs/${encodeURIComponent(finalFilename)}`,
+    sourceText: normalizeText(result.output_markdown || result.summary || "")
   };
+}
+
+async function createInitialPresentationForCase({ record, owner, workspaceLanguage, preferredProvider, preferredModel, jobRef }) {
+  const outputFormat = "pptx";
+  const llmProvider = normalizeLlmProvider(preferredProvider);
+  const llmModel = normalizeLlmModel(llmProvider, preferredModel);
+  const task = {
+    id: randomUUID(),
+    caseId: record.id,
+    title: "PowerPoint briefing deck",
+    instructions: defaultPowerPointInstructions(),
+    outputFormat,
+    outputFilename: "workspace-briefing-deck",
+    outputPath: "",
+    outputUrl: "",
+    outputSummary: "",
+    llmProvider,
+    llmModel,
+    status: "running",
+    createdBy: owner.email,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  await insertTask(task);
+
+  try {
+    jobRef.step = "Generating PowerPoint briefing deck";
+    const result = await generateWorkspaceTask({
+      record,
+      title: task.title,
+      instructions: task.instructions,
+      requestedFilename: task.outputFilename,
+      outputFormat,
+      workspaceLanguage,
+      llmProvider,
+      llmModel,
+      requestedBy: owner.email,
+      jobRef
+    });
+
+    await updateTask({
+      ...task,
+      title: result.taskTitle,
+      outputFilename: result.outputFilename,
+      outputPath: result.outputPath,
+      outputUrl: result.outputUrl,
+      outputSummary: result.summary,
+      status: "completed",
+      updatedAt: new Date().toISOString()
+    });
+
+    await attachGeneratedOutputAsWorkspaceFile(record, result, {
+      llmProvider,
+      jobRef
+    });
+  } catch (error) {
+    await updateTask({
+      ...task,
+      outputSummary: formatError(error),
+      status: "failed",
+      updatedAt: new Date().toISOString()
+    });
+    jobRef.step = "Workspace ready; PowerPoint generation could not complete";
+  }
+}
+
+function defaultPowerPointInstructions() {
+  return `
+Create a concise UAEICP employee briefing deck from this workspace.
+Include: executive summary, key findings, evidence and citations, legal/compliance review points, risks or gaps, recommended next actions, and human review notes.
+Keep each slide employee-ready, practical, and easy to present.
+  `.trim();
+}
+
+async function attachGeneratedOutputAsWorkspaceFile(record, result, { llmProvider, jobRef }) {
+  if (!result?.outputPath || !fs.existsSync(result.outputPath)) {
+    return;
+  }
+
+  let fileId = `generated-${Date.now()}`;
+  if (llmProvider === "openai" && client && record.vectorStoreId) {
+    try {
+      jobRef.step = "Indexing generated PowerPoint as workspace reference";
+      const uploaded = await client.files.create({
+        file: await toFile(fs.readFileSync(result.outputPath), result.outputFilename, {
+          type: "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        }),
+        purpose: "user_data"
+      });
+      await client.vectorStores.files.createAndPoll(record.vectorStoreId, { file_id: uploaded.id });
+      fileId = uploaded.id;
+    } catch (_error) {
+      fileId = `generated-local-${Date.now()}`;
+    }
+  }
+
+  const stat = fs.statSync(result.outputPath);
+  record.files = record.files || [];
+  record.files.push({
+    id: fileId,
+    name: result.outputFilename,
+    size: stat.size,
+    type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    extension: ".pptx",
+    extractionPreview: result.summary || "Generated PowerPoint briefing deck.",
+    extractionMethod: "generated_powerpoint",
+    extractedText: result.sourceText || result.summary || ""
+  });
+  record.ingestion = {
+    ...(record.ingestion || {}),
+    totalFiles: record.files.length,
+    supportedFiles: record.files.length,
+    formats: [...new Set(record.files.map((file) => file.extension || "unknown"))]
+  };
+  record.updatedAt = new Date().toISOString();
+  await saveCaseRecord(record);
 }
 
 async function createCaseWithAnalysis({ title, mode, analysisDepth, workspaceType, workspaceLanguage, llmProvider, llmModel, tempFiles, owner, jobRef }) {

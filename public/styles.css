@@ -508,6 +508,36 @@ textarea {
   border-radius: var(--radius-lg);
 }
 
+.option-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(11, 107, 85, 0.16);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(11, 107, 85, 0.08), rgba(255, 252, 247, 0.96));
+  cursor: pointer;
+}
+
+.option-card input {
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.option-card strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.option-card small {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
 .guarded-card {
   background: linear-gradient(135deg, rgba(123, 99, 63, 0.08), rgba(255, 252, 247, 0.98));
 }
