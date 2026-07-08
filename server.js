@@ -41,12 +41,12 @@ const OLLAMA_BASE_URL = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434"
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "";
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const ANTHROPIC_BASE_URL = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/+$/, "");
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "";
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "";
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1";
 const LLM_PROVIDER = normalizeProvider(process.env.LLM_PROVIDER);
 const HAS_ANTHROPIC_KEY = Boolean(ANTHROPIC_API_KEY);
-const HAS_OPENAI_CONFIG = HAS_OPENAI_KEY && Boolean(OPENAI_MODEL);
-const HAS_ANTHROPIC_CONFIG = HAS_ANTHROPIC_KEY && Boolean(ANTHROPIC_MODEL);
+const HAS_OPENAI_CONFIG = HAS_OPENAI_KEY;
+const HAS_ANTHROPIC_CONFIG = HAS_ANTHROPIC_KEY;
 const HAS_OLLAMA_CONFIG = LLM_PROVIDER === "ollama" && Boolean(process.env.OLLAMA_BASE_URL && OLLAMA_MODEL);
 const ACTIVE_PROVIDER = resolveActiveProvider();
 const HAS_CONFIGURED_PROVIDER = HAS_OPENAI_CONFIG || HAS_ANTHROPIC_CONFIG || HAS_OLLAMA_CONFIG;
@@ -278,6 +278,13 @@ app.get("/api/health", async (_req, res) => {
       model: defaultModelForProvider(activeProvider)
     },
     providerOptions,
+    configStatus: {
+      openaiKey: HAS_OPENAI_KEY,
+      openaiModel: Boolean(process.env.OPENAI_MODEL),
+      anthropicKey: HAS_ANTHROPIC_KEY,
+      anthropicModel: Boolean(process.env.ANTHROPIC_MODEL),
+      ollamaEnabled: HAS_OLLAMA_CONFIG
+    },
     adminEmail: admin ? admin.email : DEFAULT_ADMIN_EMAIL,
     persistence: USE_POSTGRES ? "postgresql" : "sqlite",
     backgroundJobs: true

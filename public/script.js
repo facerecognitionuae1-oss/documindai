@@ -348,7 +348,7 @@ async function loadHealth() {
     state.runtimeModel = state.defaultModel;
     healthPill.textContent = data.configured
       ? `${String(data.provider || state.defaultProvider).toUpperCase()} ready - model ${data.model || state.defaultModel}`
-      : "Add OPENAI_API_KEY or ANTHROPIC_API_KEY in Hostinger environment variables before using the app";
+      : missingProviderMessage(data.configStatus);
     healthPill.classList.add(data.configured ? "ready" : "missing");
     adminHint.textContent = `Default admin: ${data.adminEmail} / ChangeMe123! unless overridden in .env`;
     adminHint.classList.remove("hidden");
@@ -1277,6 +1277,16 @@ function renderModelOptions(provider, selectedModel) {
     .map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`)
     .join("");
   llmModelSelect.value = nextModel;
+}
+
+function missingProviderMessage(configStatus = {}) {
+  const flags = [
+    `OpenAI key: ${configStatus.openaiKey ? "yes" : "no"}`,
+    `OpenAI model env: ${configStatus.openaiModel ? "yes" : "default"}`,
+    `Claude key: ${configStatus.anthropicKey ? "yes" : "no"}`,
+    `Claude model env: ${configStatus.anthropicModel ? "yes" : "default"}`
+  ].join(" · ");
+  return `No AI provider detected. Check Hostinger env variables and redeploy. ${flags}`;
 }
 
 function renderProviderOptions() {
